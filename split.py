@@ -1,21 +1,89 @@
-﻿import shutil
-import random
+﻿
+import csv
+import shutil
+import sys
+from collections import Counter
 from pathlib import Path
-SEED=42
-VAL_RATIO=0.2
-ROOT=Path('dataset_corrected')
-OUT=Path('dataset')
-random.seed(SEED)
-for cls in [d for d in ROOT.iterdir() if d.is_dir()]:
-    images=[p for p in cls.iterdir() if p.suffix.lower() in {'.jpg','.jpeg','.png'}]
-    random.shuffle(images)
-    val_count=max(1,round(len(images)*VAL_RATIO))
-    val_images=images[:val_count]
-    train_images=images[val_count:]
-    for split,items in [('train',train_images),('val',val_images)]:
-        out_dir=OUT/split/cls.name
-        out_dir.mkdir(parents=True,exist_ok=True)
-        for img in items:
-            shutil.copy2(img,out_dir/img.name)
-    print(cls.name+': train='+str(len(train_images))+', val='+str(len(val_images)))
-print('Split dataset selesai.')
+
+ROOT = Path(__file__).resolve().parent
+SOURCE = ROOT / "dataset_corrected"
+METADATA = ROOT / "dataset_raw" / "metadata.csv"
+OUTPUT = ROOT / "dataset"
+
+TRAIN_LIGHT = "terang"
+VAL_LIGHT = "redup"
+
+if not SOURCE.is_dir():
+    sys.exit("ERROR: Folder dataset_corrected tidak ditemukan.")
+
+if not METADATA.is_file():
+    sys.exit("ERROR: dataset_raw/metadata.csv tidak ditemukan.")
+
+with open(METADATA, newline="", encoding="utf-8-sig") as f:
+    reader = csv.DictReader(f)
+    required = {"nama_file", "kelas", "kondisi_cahaya"}
+
+    if not required.issubset(set(reader.fieldnames or [])):
+        sys.exit("ERROR: Kolom metadata tidak sesuai.")
+
+    rows = list(reader)
+
+if len(rows) != 604:
+    sys.exit(f"ERROR: Metadata berisi {len(rows)} baris, bukan 604.")
+
+tasks = []
+errors = []
+
+for row in rows:
+    filename = (row.get("nama_file") or "").strip()
+    kelas = (row.get("kelas") or "").strip()
+    cahaya = (row.get("kondisi_cahaya") or "").strip().lower()
+
+    if not filename or not kelas:
+        errors.append(f"Nama file/kelas kosong: {row}")
+        continue
+
+    if cahaya not in {TRAIN_LIGHT, VAL_LIGHT}:
+        errors.append(f"Kondisi cahaya tidak valid: {filename}")
+        continue
+
+    source_file = SOURCE / kelas / filename
+
+    if not source_file.is_file():
+        errors.append(f"File terkoreksi tidak ditemukan: {source_file}")
+        continue
+
+    split = "train" if cahaya == TRAIN_LIGHT else "val"
+    tasks.append((source_file, split, kelas, filename))
+
+if errors:
+    print("PEMBAGIAN DIBATALKAN. Periksa masalah berikut:")
+    for error in errors[:20]:
+        print("-", error)
+    sys.exit(f"Total masalah: {len(errors)}. Dataset lama tidak diubah.")
+
+if len(tasks) != 604:
+    sys.exit("ERROR: Jumlah file yang siap diproses bukan 604.")
+
+# Dataset ini merupakan hasil turunan dan dapat dibuat ulang.
+if OUTPUT.exists():
+    shutil.rmtree(OUTPUT)
+
+counts = Counter()
+
+for source_file, split, kelas, filename in tasks:
+    destination = OUTPUT / split / kelas / filename
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_file, destination)
+    counts[(split, kelas)] += 1
+
+print("\nPEMBAGIAN DATA SELESAI")
+for kelas in sorted({row["kelas"].strip() for row in rows}):
+    train_count = counts[("train", kelas)]
+    val_count = counts[("val", kelas)]
+    print(f"{kelas}: train={train_count}, val={val_count}")
+
+print(f"\nTotal train: {sum(v for (s, _), v in counts.items() if s == 'train')}")
+print(f"Total val:   {sum(v for (s, _), v in counts.items() if s == 'val')}")
+print("Train menggunakan kondisi terang.")
+print("Validation menggunakan kondisi redup.")
