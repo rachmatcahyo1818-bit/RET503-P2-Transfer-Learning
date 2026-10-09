@@ -1,7 +1,7 @@
-﻿metric,value,unit
-min_latency,13.565,ms
-average_latency,16.342,ms
-median_latency,16.367,ms
-p95_latency,17.430,ms
-max_latency,20.854,ms
-estimated_fps,61.19,FPS
+metric,value,unit
+min_latency,12.010,ms
+average_latency,14.869,ms
+median_latency,14.906,ms
+p95_latency,16.895,ms
+max_latency,27.206,ms
+estimated_fps,67.25,FPS
