@@ -19,7 +19,7 @@ Dataset mentah berisi **604 gambar**.
 
 Data dipisahkan berdasarkan kondisi pencahayaan pada metadata: citra **terang** digunakan untuk training dan citra **redup** untuk validation. Dengan demikian, validation menguji kondisi cahaya yang berbeda dari training. Angka ini perlu ditafsirkan dalam konteks pembagian tersebut dan bukan dianggap sebagai jaminan performa pada semua kondisi nyata.
 
-Kolom metadata: `nama_file`, `kelas`, `tanggal`, dan `kondisi_cahaya`.
+Kolom metadata: `nama_file`, `kelas`, `tanggal`, dan `kondisi_cahaya`. Catatan: tanggal di beberapa baris metadata berbeda dari segmen `YYYYMMDD` pada nama file dan belum diselaraskan karena tanggal tersebut belum dikonfirmasi sebagai tanggal pengambilan; verifikasi sebelum penyerahan.
 
 ## 3. Preprocessing dan konfigurasi
 
