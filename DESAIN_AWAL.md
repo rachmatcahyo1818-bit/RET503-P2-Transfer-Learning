@@ -1,96 +1,78 @@
-# DESAIN AWAL P2 - TRANSFER LEARNING
+# DESAIN AWAL P2 — TRANSFER LEARNING
 
 **Mata kuliah:** RET503 Computer Vision and Deep Learning  
 **Topik:** Transfer Learning dan Fine-Tuning Model Visi  
-**Tahap CDIO:** Stage 2 - Design
+**Tahap CDIO:** Stage #2 — Design
 
-## 1. Misi proyek dan kelas objek
+## 1. Misi proyek
 
-Proyek ini mengembangkan prototipe klasifikasi visual untuk mengenali empat komponen elektronik (`arduino_uno`, `esp32`, `kartu_rfid`, `rfid_rc522`) dan satu kelas kondisi tanpa objek (`kosong`). Klasifikasi dijalankan menggunakan MobileNetV3-Small dan dibandingkan pada tiga strategi training.
+Proyek ini membangun prototipe persepsi berbasis kamera untuk mengklasifikasikan komponen elektronik dan mendeteksi kondisi ketika tidak ada objek target. Model klasifikasi ini menjadi dasar untuk pengembangan persepsi robot pada tahap berikutnya; pengujian saat ini dilakukan pada dataset gambar, belum pada keseluruhan pipeline robot.
 
-<table>
-<tr><td align="center"><img src="dataset_raw/arduino_uno/arduino_uno_20261006_lab_redup_001.png" width="120" alt="Arduino Uno"><br>Arduino Uno<br><small>640 x 480 piksel</small></td>
-<td align="center"><img src="dataset_raw/esp32/esp32_20261006_lab_redup_001.png" width="120" alt="ESP32"><br>ESP32<br><small>640 x 480 piksel</small></td>
-<td align="center"><img src="dataset_raw/kartu_rfid/kartu_rfid_20261006_lab_redup_001.png" width="120" alt="Kartu RFID"><br>Kartu RFID<br><small>640 x 480 piksel</small></td>
-<td align="center"><img src="dataset_raw/kosong/kosong_20261006_lab_redup_001.png" width="120" alt="Kondisi tanpa objek"><br>Kondisi tanpa objek<br><small>640 x 480 piksel</small></td>
-<td align="center"><img src="dataset_raw/rfid_rc522/rfid_rc522_20261006_lab_redup_001.png" width="120" alt="Modul RFID RC522"><br>Modul RFID RC522<br><small>640 x 480 piksel</small></td></tr>
-</table>
+## 2. Kelas objek dan contoh citra
 
-| Kelas | Deskripsi | Jumlah citra |
-|---|---|---:|
-| `arduino_uno` | Board Arduino Uno | 99 |
-| `esp32` | Board ESP32 | 135 |
-| `kartu_rfid` | Kartu RFID | 170 |
-| `kosong` | Tidak ada objek target | 50 |
-| `rfid_rc522` | Modul pembaca RFID RC522 | 150 |
-| **Total** | | **604** |
+Dataset berisi 604 citra dari lima kelas. Contoh di bawah berasal dari `dataset_raw` pada repositori ini.
 
-## 2. Kamera, kalibrasi, dan dudukan
+| Arduino Uno | ESP32 | Kartu RFID | Kosong | RFID-RC522 |
+|---|---|---|---|---|
+| <img src="dataset_raw/arduino_uno/arduino_uno_20261006_lab_terang_002.png" width="120" alt="Contoh Arduino Uno"> | <img src="dataset_raw/esp32/esp32_20261006_lab_terang_001.png" width="120" alt="Contoh ESP32"> | <img src="dataset_raw/kartu_rfid/kartu_rfid_20261006_lab_terang_001.png" width="120" alt="Contoh kartu RFID"> | <img src="dataset_raw/kosong/kosong_20261006_lab_terang_001.png" width="120" alt="Contoh kondisi tanpa objek"> | <img src="dataset_raw/rfid_rc522/rfid_rc522_20261006_lab_terang_001.png" width="120" alt="Contoh modul RFID RC522"> |
+| 99 gambar | 135 gambar | 170 gambar | 50 gambar | 150 gambar |
 
-- **Resolusi citra dataset:** 640 x 480 piksel. Ini adalah ukuran file citra yang tersedia, bukan klaim resolusi sensor kamera.
-- **Kalibrasi kamera:** 41 citra checkerboard; RMS calibration error 0.5709 piksel. Parameter kalibrasi disimpan di `calib.npz` dan digunakan oleh pipeline koreksi citra.
-- **Jenis kamera dan resolusi akuisisi asli:** belum dicatat secara eksplisit dalam metadata yang tersedia; perlu dikonfirmasi dari konfigurasi kamera/skrip capture.
-- **Dudukan, tinggi kamera, sudut, dan jarak kerja:** belum diukur/didokumentasikan sebagai nilai fisik pada eksperimen P2. Ukur saat kamera dipasang pada dudukan robot sebelum deployment; angka tidak diperkirakan di dokumen ini.
+Setiap kelas memenuhi ketentuan minimal 50 citra. Nama kelas yang digunakan pada kode adalah `arduino_uno`, `esp32`, `kartu_rfid`, `kosong`, dan `rfid_rc522`.
 
-## 3. Unit komputasi
+## 3. Kamera dan kalibrasi
 
-| Parameter | Informasi yang terdeteksi saat dokumen dibuat |
-|---|---|
-| Sistem operasi | Microsoft Windows 11 Home Single Language |
-| Model komputer | ASUSTeK COMPUTER INC. Vivobook_ASUSLaptop M3500QC_M3500QC |
-| CPU | AMD Ryzen 9 5900HX with Radeon Graphics |
-| RAM terpasang | 15,4 GB |
-| Python | 3.14.5 |
-| PyTorch terpasang saat dokumen dibuat | 2.14.1+cpu |
-| torchvision terpasang saat dokumen dibuat | 0.29.1+cpu |
-| CUDA tersedia saat dokumen dibuat | Tidak |
-| Perangkat eksperimen pada log | CPU |
+Data awal diambil menggunakan webcam laptop pada resolusi **1280 × 720 piksel**. Kalibrasi menggunakan 41 citra checkerboard dan menghasilkan RMS calibration error sebesar **0,5709 piksel**. Parameter kalibrasi disimpan pada `calib.npz`; koreksi distorsi dilakukan oleh `correct_images.py` dan hasil koreksi disimpan terpisah dari data mentah.
 
-Log training dan latency eksperimen yang disimpan mencatat perangkat eksperimen sebagai CPU. Informasi sistem di atas dibaca dari komputer ketika dokumen diperbarui; profil daya pada saat training awal tidak direkam terpisah.
+**Batasan pencatatan pemasangan:** tinggi kamera, sudut kamera, dan jarak kerja fisik tidak dicatat sebagai bagian dari dataset awal. Nilai-nilai tersebut tidak diperkirakan atau dibuat-buat; ukur dan catat saat webcam dipasang pada dudukan robot untuk uji deployment.
 
-## 4. Target kinerja dan kandidat model
+## 4. Unit komputasi
 
-Materi referensi menetapkan target sekitar 15 FPS (66.7 ms/frame) untuk seluruh pipeline, bukan inferensi model saja. Pada model Feature Extraction, latency inferensi saja adalah rata-rata **14.869 ms**, median **14.906 ms**, P95 **16.895 ms**, maksimum **27.206 ms**, dengan estimasi **67.25 FPS** pada CPU. Kamera, preprocessing, post-processing, serta komunikasi ROS 2 belum diukur sebagai satu pipeline utuh.
+Eksperimen dikembangkan di laptop Windows menggunakan Python, PyTorch, dan torchvision. Training serta uji latency yang dilaporkan menggunakan **CPU**; CUDA tidak digunakan. Detail model CPU, RAM, dan apakah laptop tersambung ke adaptor daya saat pengukuran tidak terekam pada log eksperimen, sehingga tidak dinyatakan sebagai angka terukur.
 
-| Kandidat | Alasan pemilihan |
-|---|---|
-| MobileNetV3-Small | Model utama: ringan dan cocok menjadi titik awal pengujian pada CPU/edge. |
-| EfficientNet-B0 | Kandidat pembanding dengan kebutuhan komputasi lebih tinggi untuk dibandingkan pada tahap lanjutan. |
+## 5. Target kinerja
 
-## 5. Strategi transfer learning dan hasil
+Referensi materi praktikum adalah **15 FPS**, setara sekitar **66,7 ms per frame untuk keseluruhan pipeline**. Pengukuran saat ini hanya mengukur inferensi model pada CPU, bukan akuisisi kamera, preprocessing, postprocessing, atau komunikasi ROS 2. Karena itu angka latency inferensi tidak diklaim sebagai FPS end-to-end robot.
 
-Input model adalah 224 x 224 RGB dengan normalisasi ImageNet. Augmentasi training: `RandomResizedCrop`, `RandomHorizontalFlip`, dan `ColorJitter`; batch size 16; 10 epoch; optimizer Adam; scheduler CosineAnnealingLR.
+## 6. Kandidat model
 
-| Metode | Bagian yang dilatih | Akurasi validasi terbaik | Epoch terbaik | Epoch pertama >=90% | Waktu training |
-|---|---|---:|---:|---:|---:|
-| Feature Extraction | Classifier; backbone pretrained dibekukan | 100.00% | 1 | 1 | 136.32 detik |
-| Partial Fine-Tuning | Dua blok feature terakhir + classifier | 100.00% | 2 | 1 | 142.28 detik |
-| Scratch Training | Semua parameter, tanpa pretrained weights | 26.71% | 1 | Tidak tercapai | 194.86 detik |
+| Model | Ukuran model (referensi materi) | Alasan |
+|---|---:|---|
+| **MobileNetV3-Small** | sekitar 2,5 juta parameter; 0,06 GFLOPs | Ringan, dipilih untuk eksperimen utama pada CPU dan perangkat edge. |
+| **EfficientNet-B0** | sekitar 5,3 juta parameter; 0,39 GFLOPs | Kandidat pembanding dengan kebutuhan komputasi lebih tinggi. |
 
-Feature Extraction dipakai untuk uji latency karena mencapai akurasi validasi terbaik pada epoch pertama dan waktu training lebih singkat. Angka 100% hanya berlaku untuk validation set yang digunakan, bukan jaminan untuk semua citra baru.
+Angka parameter dan GFLOPs di atas merupakan angka referensi materi, bukan pengukuran ulang pada proyek ini. Eksperimen P2 yang dilaporkan menggunakan MobileNetV3-Small.
 
-## 6. Rencana data dan pembagian
+## 7. Strategi transfer learning
 
-Metadata mencatat `nama_file`, `kelas`, `tanggal`, dan `kondisi_cahaya`. Ada perbedaan antara kolom tanggal pada metadata dan segmen YYYYMMDD pada nama file. Nilai metadata sengaja tidak diubah karena tanggal dalam nama file belum dikonfirmasi sebagai tanggal akuisisi; verifikasi terhadap catatan pengambilan sebelum menyerahkan dataset.
+Eksperimen membandingkan tiga mode selama 10 epoch dengan batch size 16, input RGB 224 × 224, normalisasi ImageNet, augmentasi `RandomResizedCrop`, `RandomHorizontalFlip`, dan `ColorJitter`, optimizer Adam, serta scheduler Cosine Annealing.
 
-| Kelas | Training (terang) | Validation (redup) |
-|---|---:|---:|
-| `arduino_uno` | 49 | 50 |
-| `esp32` | 65 | 70 |
-| `kartu_rfid` | 88 | 82 |
-| `kosong` | 25 | 25 |
-| `rfid_rc522` | 70 | 80 |
-| **Total** | **297** | **307** |
+1. **Feature Extraction:** backbone pretrained ImageNet dibekukan; classifier baru dilatih.
+2. **Partial Fine-Tuning:** dua modul feature terakhir dan classifier dilatih; bagian backbone lainnya dibekukan.
+3. **Scratch Training:** model dilatih dari bobot awal tanpa bobot pretrained.
 
-Data training menggunakan kondisi `terang`; validation menggunakan kondisi `redup`. Ini menguji perbedaan pencahayaan, tetapi belum membuktikan generalisasi untuk semua variasi jarak, orientasi, posisi, bayangan, oklusi, atau latar. Uji lanjutan dengan sesi dan foto baru tetap diperlukan.
+## 8. Rencana dan pembagian data
 
-## 7. Risiko dan mitigasi
+Metadata pada `dataset_raw/metadata.csv` mencatat nama file, kelas, tanggal pengambilan, dan kondisi cahaya. Pengguna mengonfirmasi tanggal pengambilan adalah **6 Oktober 2026**; tanggal pada seluruh 604 baris metadata telah diselaraskan dengan `2026-10-06`.
+
+| Kelas | Training (terang) | Validation (redup) | Total |
+|---|---:|---:|---:|
+| `arduino_uno` | 49 | 50 | 99 |
+| `esp32` | 65 | 70 | 135 |
+| `kartu_rfid` | 88 | 82 | 170 |
+| `kosong` | 25 | 25 | 50 |
+| `rfid_rc522` | 70 | 80 | 150 |
+| **Total** | **297** | **307** | **604** |
+
+Pembagian menggunakan kondisi cahaya terang untuk training dan redup untuk validation. Nilai validation harus ditafsirkan sebagai evaluasi lintas kondisi pencahayaan pada dataset yang tersedia, bukan jaminan performa universal pada semua kondisi atau objek baru.
+
+## 9. Risiko dan mitigasi
 
 | Risiko | Mitigasi |
 |---|---|
-| Akurasi validasi terlalu tinggi atau kemungkinan data leakage | Uji dengan sesi/foto baru; jangan hanya mengandalkan validation set saat ini. |
-| Cahaya, posisi, jarak, atau latar berbeda | Tambahkan contoh variasi terang/redup, bayangan, posisi tepi, orientasi dan oklusi. |
-| Scratch Training tidak mempelajari kelas dengan baik | Laporkan angka yang diperoleh apa adanya; periksa confusion matrix, precision, recall dan F1-score. |
-| Latency saat deployment melebihi target | Ukur seluruh pipeline pada perangkat target; angka saat ini hanya inferensi model di CPU. |
+| Overfitting atau performa rendah pada data baru | Gunakan pretrained weights, augmentasi, dan uji tambahan pada citra baru. |
+| Perubahan pencahayaan | Evaluasi lintas kondisi; tambah sampel dari jendela, bayangan, dan pencahayaan berbeda. |
+| Data leakage atau gambar terlalu mirip | Pisahkan sesi atau kondisi pengambilan dan tinjau contoh validation. |
+| Ketidakseimbangan kelas | Pantau jumlah per kelas; tambahkan data bila hasil per kelas menunjukkan kebutuhan. |
+| Latency pada perangkat robot lebih tinggi dari uji CPU | Ukur end-to-end latency setelah kamera dan pipeline robot terpasang. |
 
-**Batasan yang belum diukur:** kamera/dudukan fisik robot, tinggi/sudut/jarak kerja, performa pada sesi pengambilan independen, dan latency pipeline end-to-end. Batasan ini dicatat agar dokumen tidak mengklaim hal yang belum diuji.
+**Status:** dataset, kelas, model eksperimen, dan protokol training telah ditetapkan. Pengukuran posisi fisik webcam dan evaluasi pipeline end-to-end merupakan pekerjaan lanjutan sebelum deployment.

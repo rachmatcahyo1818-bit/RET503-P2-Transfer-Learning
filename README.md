@@ -2,11 +2,11 @@
 
 ## 1. Ringkasan proyek
 
-Proyek ini membandingkan tiga strategi training **MobileNetV3-Small** untuk mengklasifikasikan lima kategori pada citra: `arduino_uno`, `esp32`, `kartu_rfid`, `kosong`, dan `rfid_rc522`. Evaluasi mencakup akurasi validasi, waktu training, epoch pertama saat akurasi validasi mencapai 90%, dan latency inferensi pada CPU.
+Proyek P2 membandingkan tiga strategi training **MobileNetV3-Small** untuk mengklasifikasikan lima kelas citra: `arduino_uno`, `esp32`, `kartu_rfid`, `kosong`, dan `rfid_rc522`. Hasil yang dicatat mencakup akurasi validation, waktu training, epoch pertama saat akurasi validation mencapai 90%, dan latency inferensi pada CPU.
 
 ## 2. Dataset
 
-Dataset mentah berisi **604 gambar**.
+Dataset mentah berisi **604 gambar**. Pengambilan citra dikonfirmasi berlangsung pada **6 Oktober 2026**; seluruh baris `dataset_raw/metadata.csv` telah menggunakan tanggal `2026-10-06`.
 
 | Kelas | Gambar mentah | Train (terang) | Validation (redup) |
 |---|---:|---:|---:|
@@ -17,27 +17,27 @@ Dataset mentah berisi **604 gambar**.
 | `rfid_rc522` | 150 | 70 | 80 |
 | **Total** | **604** | **297** | **307** |
 
-Data dipisahkan berdasarkan kondisi pencahayaan pada metadata: citra **terang** digunakan untuk training dan citra **redup** untuk validation. Dengan demikian, validation menguji kondisi cahaya yang berbeda dari training. Angka ini perlu ditafsirkan dalam konteks pembagian tersebut dan bukan dianggap sebagai jaminan performa pada semua kondisi nyata.
+Pemisahan dilakukan menurut kondisi cahaya: citra **terang** digunakan untuk training dan citra **redup** untuk validation. Ini menjadi uji lintas kondisi pencahayaan, tetapi hasilnya tidak otomatis menjamin performa pada semua lingkungan atau foto yang benar-benar baru.
 
-Kolom metadata: `nama_file`, `kelas`, `tanggal`, dan `kondisi_cahaya`. Catatan: tanggal di beberapa baris metadata berbeda dari segmen `YYYYMMDD` pada nama file dan belum diselaraskan karena tanggal tersebut belum dikonfirmasi sebagai tanggal pengambilan; verifikasi sebelum penyerahan.
+Kolom metadata: `nama_file`, `kelas`, `tanggal`, dan `kondisi_cahaya`.
 
 ## 3. Preprocessing dan konfigurasi
 
 - Ukuran input: `224 × 224` piksel, RGB.
-- Normalisasi ImageNet: mean `[0.485, 0.456, 0.406]` dan standard deviation `[0.229, 0.224, 0.225]`.
+- Normalisasi ImageNet: mean `[0.485, 0.456, 0.406]`, standard deviation `[0.229, 0.224, 0.225]`.
 - Augmentasi training: `RandomResizedCrop(224)`, `RandomHorizontalFlip`, dan `ColorJitter`.
 - Validation: `Resize(256)` lalu `CenterCrop(224)`.
-- Batch size: 16; jumlah epoch: 10; seed: 42.
+- Batch size: 16; epoch: 10; seed: 42.
 - Loss: Cross Entropy; optimizer: Adam; scheduler: Cosine Annealing.
-- Perangkat training dan pengujian latency: CPU.
+- Perangkat training dan latency: CPU; CUDA tidak digunakan.
 
 ### Strategi training
 
-1. **Feature Extraction** — backbone MobileNetV3-Small menggunakan bobot pralatih ImageNet dan dibekukan; classifier baru dilatih.
-2. **Partial Fine-Tuning** — dua blok feature terakhir dan classifier dilatih; layer backbone lainnya dibekukan.
-3. **Scratch Training** — model dimulai tanpa bobot pralatih dan seluruh parameter dilatih.
+1. **Feature Extraction** — backbone MobileNetV3-Small pretrained ImageNet dibekukan; classifier baru dilatih.
+2. **Partial Fine-Tuning** — dua modul feature terakhir dan classifier dilatih; backbone lainnya dibekukan.
+3. **Scratch Training** — semua parameter dilatih dari bobot awal tanpa pretrained weights.
 
-## 4. Hasil training terbaru
+## 4. Hasil training
 
 | Metode | Best validation accuracy | Best epoch | Epoch pertama dengan validation accuracy ≥90% | Waktu training |
 |---|---:|---:|---:|---:|
@@ -45,7 +45,7 @@ Kolom metadata: `nama_file`, `kelas`, `tanggal`, dan `kondisi_cahaya`. Catatan: 
 | Partial Fine-Tuning | **100.00%** | 2 | 1 | 142.28 detik |
 | Scratch Training | 26.71% | 1 | Tidak tercapai | 194.86 detik |
 
-Feature Extraction dan Partial Fine-Tuning sama-sama mencapai 100% pada validation set dalam eksperimen ini. Feature Extraction mencapai nilai terbaik lebih awal dan waktu training-nya lebih singkat. Karena itu, checkpoint Feature Extraction dipilih untuk pengujian latency.
+Feature Extraction dan Partial Fine-Tuning mencapai 100% pada validation set eksperimen ini. Feature Extraction mencapai hasil terbaik pada epoch pertama dan memiliki waktu training lebih singkat sehingga checkpoint tersebut dipilih untuk pengukuran latency.
 
 ### Validation accuracy per epoch
 
@@ -62,19 +62,17 @@ Feature Extraction dan Partial Fine-Tuning sama-sama mencapai 100% pada validati
 | 9 | 100.00% | 99.02% | 26.71% |
 | 10 | 100.00% | 98.70% | 26.71% |
 
-Grafik validation accuracy dibuat otomatis oleh program training:
-
 ![Validation Accuracy per Epoch](results/validation_accuracy.png)
 
-### Catatan interpretasi
+### Analisis singkat
 
-Scratch Training menghasilkan validation accuracy 26.71%, sama dengan proporsi kelas terbesar pada validation set (`kartu_rfid`, 82 dari 307 gambar). Ini mengindikasikan model mungkin cenderung memprediksi kelas mayoritas; confusion matrix serta precision, recall, dan F1-score per kelas perlu diperiksa untuk memastikan perilakunya.
+Scratch Training memperoleh validation accuracy 26.71%, sama dengan proporsi kelas terbesar (`kartu_rfid`, 82 dari 307 gambar validation). Ini mungkin menunjukkan kecenderungan memprediksi kelas mayoritas; confusion matrix, precision, recall, dan F1-score per kelas belum dihitung dan diperlukan untuk memastikannya.
 
-Akurasi 100% hanya menggambarkan validation set pada eksperimen ini. Pengujian terpisah dengan gambar baru dari sesi pengambilan berbeda tetap diperlukan sebelum menyimpulkan generalisasi model. Pembagian berdasarkan kondisi pencahayaan merupakan aspek penting dalam menafsirkan hasil ini.
+Akurasi 100% adalah hasil pada validation set yang digunakan, bukan jaminan akurasi pada semua foto baru. Evaluasi terpisah pada gambar dari sesi pengambilan berbeda tetap disarankan untuk memeriksa generalisasi dan kemungkinan kemiripan data.
 
 ## 5. Hasil latency
 
-Pengukuran dilakukan menggunakan `latency.py` dengan checkpoint Feature Extraction, CPU, dan satu input berukuran `1 × 3 × 224 × 224`.
+Pengukuran `latency.py` menggunakan checkpoint Feature Extraction, CPU, dan satu input `1 × 3 × 224 × 224`.
 
 | Metrik | Hasil |
 |---|---:|
@@ -85,23 +83,25 @@ Pengukuran dilakukan menggunakan `latency.py` dengan checkpoint Feature Extracti
 | Maximum latency | 27.206 ms |
 | Estimated FPS | **67.25 FPS** |
 
-Target referensi pada materi adalah 15 FPS, setara sekitar 66.7 ms per frame. Rata-rata latency inferensi model 14.869 ms berada di bawah angka tersebut. Pengukuran ini **hanya mencakup inferensi model**, bukan keseluruhan pipeline kamera, pengolahan citra, post-processing, komunikasi, atau ROS 2; jadi 67.25 FPS bukan hasil pengukuran FPS seluruh sistem.
+Materi praktikum menetapkan referensi 15 FPS atau sekitar 66,7 ms per frame untuk **keseluruhan pipeline**. Hasil 14.869 ms di sini hanya mengukur inferensi model; tidak termasuk akuisisi kamera, preprocessing, postprocessing, komunikasi, atau ROS 2. Karena itu, 67.25 FPS tidak diklaim sebagai FPS keseluruhan sistem.
 
-## 6. File hasil
+## 6. File utama
 
-- `models/mobilenet_v3_small_feature.pth` — checkpoint Feature Extraction terbaik.
-- `models/mobilenet_v3_small_partial.pth` — checkpoint Partial Fine-Tuning terbaik.
-- `models/mobilenet_v3_small_scratch.pth` — checkpoint Scratch Training terbaik.
-- `results/history_feature.csv` — riwayat Feature Extraction per epoch.
-- `results/history_partial.csv` — riwayat Partial Fine-Tuning per epoch.
-- `results/history_scratch.csv` — riwayat Scratch Training per epoch.
+- `dataset_raw/metadata.csv` — metadata dataset.
+- `calib.npz` dan `correct_images.py` — berkas kalibrasi dan koreksi distorsi.
+- `split.py` — membentuk dataset train/validation berdasarkan kondisi cahaya.
+- `train.py` — menjalankan ketiga mode training.
+- `models/mobilenet_v3_small_feature.pth` — checkpoint Feature Extraction.
+- `models/mobilenet_v3_small_partial.pth` — checkpoint Partial Fine-Tuning.
+- `models/mobilenet_v3_small_scratch.pth` — checkpoint Scratch Training.
+- `results/history_feature.csv`, `results/history_partial.csv`, `results/history_scratch.csv` — riwayat per epoch.
 - `results/training_summary.csv` — ringkasan ketiga metode.
 - `results/validation_accuracy.png` — grafik validation accuracy.
 - `results/latency_summary.csv` — ringkasan latency.
 
 ## 7. Menjalankan ulang eksperimen
 
-Jalankan dari folder utama proyek setelah Python dan dependensi tersedia:
+Dari folder utama proyek setelah dependensi tersedia:
 
 ```powershell
 py -m pip install -r requirements.txt
@@ -111,13 +111,11 @@ py train.py
 py latency.py
 ```
 
-`correct_images.py` menyiapkan citra hasil koreksi dengan berkas kalibrasi proyek. `split.py` membentuk `dataset/train` dan `dataset/val` berdasarkan metadata. `train.py` melatih ketiga strategi dan menghasilkan checkpoint, CSV, serta grafik. `latency.py` mengukur inferensi checkpoint Feature Extraction.
-
-Pastikan `calib.npz`, `dataset_raw/`, dan `dataset_raw/metadata.csv` tersedia sebelum menjalankan preprocessing.
+Perintah di atas adalah untuk mengulang eksperimen dan akan memperbarui hasil pada `models/` dan `results/`. **Tidak perlu dijalankan untuk sekadar membaca atau mengumpulkan hasil eksperimen yang sudah ada.** Pastikan `calib.npz`, `dataset_raw/`, dan metadata tersedia sebelum preprocessing.
 
 ## 8. Keterbatasan dan pekerjaan lanjutan
 
-- Evaluasi dengan confusion matrix, precision, recall, dan F1-score per kelas, khususnya untuk Scratch Training.
-- Uji model pada gambar baru yang belum digunakan selama pengembangan, dengan variasi jarak, orientasi, latar, dan pencahayaan.
-- Ukur FPS pipeline secara menyeluruh bila menggunakan kamera langsung atau ROS 2.
-- Lengkapi dokumentasi posisi kamera (tinggi, sudut, dan jarak kerja aktual) berdasarkan pengukuran perangkat yang benar-benar digunakan.
+- Hitung confusion matrix, precision, recall, dan F1-score per kelas, khususnya untuk Scratch Training.
+- Uji pada gambar baru dengan variasi jarak, orientasi, latar, dan cahaya.
+- Ukur latency seluruh pipeline bila memakai kamera langsung atau ROS 2.
+- Tinggi, sudut, dan jarak kerja webcam belum tercatat dalam pengukuran awal; catat nilai aktual sebelum deployment pada robot.
