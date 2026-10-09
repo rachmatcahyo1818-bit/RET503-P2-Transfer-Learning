@@ -1,4 +1,4 @@
 mode,best_val_accuracy,best_epoch,epoch_90,training_time_sec
-feature,99.02,7,2,149.79
-partial,97.39,10,2,151.67
-scratch,26.71,1,-,196.86
+feature,99.02,7,2,145.50
+partial,97.39,10,2,150.49
+scratch,26.71,1,-,194.73
